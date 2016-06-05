@@ -66,6 +66,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.security.KeyStore;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -74,6 +77,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+
+import javax.crypto.Cipher;
+import java.security.KeyPairGenerator;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.PublicKey;
+import android.util.Base64;
+import java.security.KeyFactory;
+
 
 /**
  * Class to process transaction requests for sending
@@ -159,8 +173,30 @@ public class Transaction {
             if (message.getType() == Message.TYPE_VOICE) {
                 sendVoiceMessage(message.getText(), message.getAddresses(), threadId);
             } else if (message.getType() == Message.TYPE_SMSMMS) {
+
+// START ENCRYPT CODE
                 if (LOCAL_LOGV) Log.v(TAG, "sending sms");
-                sendSmsMessage(message.getText(), message.getAddresses(), threadId, message.getDelay());
+
+                String alias = "QKSMS_key3";
+                String encryptedText = "this failed";
+                try {
+                    KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+                    keyStore.load(null);
+                    KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry)keyStore.getEntry(alias, null);
+                    RSAPublicKey publicKey = (RSAPublicKey) privateKeyEntry.getCertificate().getPublicKey();
+                    Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                    cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+                    byte[] encrypted = cipher.doFinal(message.getText().getBytes());
+                    encryptedText = Base64.encodeToString(encrypted, Base64.DEFAULT);
+                    Log.d("sent pre-encrypted", message.getText());
+                    Log.d("sent encrypted text", encryptedText);
+                    // test decrypt
+
+                } catch (Exception e) {
+                    Log.d("send exception", e.toString());
+                }
+                sendSmsMessage(encryptedText, message.getAddresses(), threadId, message.getDelay());
+// END ENCRYPT CODE
             } else {
                 if (LOCAL_LOGV) Log.v(TAG, "error with message type, aborting...");
             }

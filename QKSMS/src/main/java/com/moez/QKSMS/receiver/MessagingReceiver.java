@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.telephony.SmsMessage;
+import android.util.Base64;
 import android.util.Log;
 import com.moez.QKSMS.common.BlockedConversationHelper;
 import com.moez.QKSMS.common.ConversationPrefsHelper;
@@ -18,6 +19,17 @@ import com.moez.QKSMS.transaction.NotificationManager;
 import com.moez.QKSMS.transaction.SmsHelper;
 import com.moez.QKSMS.ui.settings.SettingsFragment;
 import org.mistergroup.muzutozvednout.ShouldIAnswerBinder;
+
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+
+import javax.crypto.Cipher;
 
 public class MessagingReceiver extends BroadcastReceiver {
     private final String TAG = "MessagingReceiver";
@@ -55,6 +67,21 @@ public class MessagingReceiver extends BroadcastReceiver {
                     bodyText.append(message.getMessageBody());
                 }
                 mBody = bodyText.toString();
+            }
+
+            // DECRYPT MESSAGE HANDLING
+            String alias = "QKSMS_key3";
+            try {
+                KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+                keyStore.load(null);
+                KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry)keyStore.getEntry(alias, null);
+                byte[] receivedEncrypted = Base64.decode(mBody, Base64.DEFAULT);
+                Cipher c2 = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                c2.init(Cipher.DECRYPT_MODE, privateKeyEntry.getPrivateKey());
+                byte[] decrypted = c2.doFinal(receivedEncrypted);
+                mBody = new String(decrypted, "UTF-8");
+            } catch (Exception e) {
+                Log.d("receiving exception", e.toString());
             }
 
             mAddress = sms.getDisplayOriginatingAddress();

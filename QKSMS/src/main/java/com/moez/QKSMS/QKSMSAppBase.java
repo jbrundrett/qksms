@@ -27,6 +27,7 @@ import android.preference.PreferenceManager;
 import android.provider.SearchRecentSuggestions;
 import android.support.multidex.MultiDexApplication;
 import android.telephony.TelephonyManager;
+import android.util.Base64;
 import android.util.Log;
 import com.android.mms.transaction.MmsSystemEventReceiver;
 import com.android.mms.util.DownloadManager;
@@ -47,6 +48,15 @@ import com.moez.QKSMS.ui.mms.layout.LayoutManager;
 import com.squareup.leakcanary.LeakCanary;
 import com.squareup.leakcanary.RefWatcher;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.math.BigInteger;
+import javax.security.auth.x500.X500Principal;
+import android.security.KeyPairGeneratorSpec;
+import java.util.Calendar;
 import java.util.Locale;
 
 public class QKSMSAppBase extends MultiDexApplication {
@@ -104,6 +114,34 @@ public class QKSMSAppBase extends MultiDexApplication {
         LiveViewManager.init(this);
 
         activePendingMessages();
+
+        // Generate RSA keys (JULIEN)
+        try {
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+            String alias = "QKSMS_key3";
+            if (!keyStore.containsAlias(alias)) {
+                Calendar notBefore = Calendar.getInstance();
+                Calendar notAfter = Calendar.getInstance();
+                notAfter.add(Calendar.YEAR, 1);
+                KeyPairGeneratorSpec spec = new KeyPairGeneratorSpec.Builder(this)
+                        .setAlias(alias)
+                        .setKeyType("RSA")
+                        .setKeySize(1024)
+                        .setSubject(new X500Principal("CN=test"))
+                        .setSerialNumber(BigInteger.ONE)
+                        .setStartDate(notBefore.getTime())
+                        .setEndDate(notAfter.getTime())
+                        .build();
+                KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore");
+                generator.initialize(spec);
+                KeyPair keyPair = generator.generateKeyPair();
+
+            }
+            Log.d("meow", "meow");
+        } catch (Exception e) {
+            Log.d("oncreate exception", e.toString());
+    }
     }
 
     public static RefWatcher getRefWatcher(Context context) {
